@@ -1,0 +1,360 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{% static 'images/fav.png' %}" rel="icon" type="image/png">
+    <title>Inbox</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{% static 'assets/css/icons.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/uikit.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/tailwind.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        /* Custom scrollbar for chat area */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #c1c1c1; 
+            border-radius: 3px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+        .typing-indicator span {
+            animation-name: blink;
+            animation-duration: 1.4s;
+            animation-iteration-count: infinite;
+            animation-fill-mode: both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: .2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0% { opacity: .2; } 20% { opacity: 1; } 100% { opacity: .2; } }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header>
+        <div class="header_inner">
+            <div class="left-side">
+                <!-- Logo -->
+                <div id="logo" class=" uk-hidden@s">
+                    <a href="/">
+                        <b><h1 style="text-transform: uppercase;">Socio</h1></b>
+                    </a>
+                </div>
+                <div class="triger" uk-toggle="target: #wrapper ; cls: sidebar-active">
+                    <i class="uil-bars"></i>
+                </div>
+                <div class="header_search">
+                    <a href="/"> <h1 style="font-size: 1.5rem;">Home</h1></a>
+                </div>
+            </div>
+            <div class="right-side lg:pr-4">
+                 <!-- profile -->
+                <a href="#">
+                    <img src="{{user_profile.profileimg.url}}" class="header-avatar" alt="">
+                </a>
+                <div uk-drop="mode: click;offset:9" class="header_dropdown profile_dropdown border-t">
+                    <ul>
+                        <li><a href="/settings"> Account setting </a> </li>
+                        <li><a href="logout"> Log Out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto mt-5 px-4 h-[85vh]">
+        
+        <!-- Flash Messages -->
+        {% if messages %}
+        <div class="flex justify-center mb-4">
+            <div class="w-full lg:w-2/3">
+                {% for message in messages %}
+                <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4" role="alert">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="flex h-full bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Sidebar (Conversation List) -->
+            <div id="conversation-sidebar" class="w-full md:w-1/3 border-r border-gray-200 flex flex-col">
+                <!-- New Message Button Area -->
+                <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-800">Messages</h2>
+                    <button onclick="document.getElementById('new-message-modal').classList.remove('hidden')" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full shadow transition duration-200" title="New Message">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Conversation List -->
+                <div class="flex-1 overflow-y-auto chat-scroll">
+                    {% if conversations %}
+                        {% for conversation in conversations %}
+                        <a href="javascript:void(0);" onclick="openConversation('user-{{ conversation.partner.username }}')" class="block cursor-pointer p-4 hover:bg-gray-50 border-b border-gray-100 transition duration-150 ease-in-out {% if conversation.has_unread %}bg-blue-50{% endif %}">
+                            <div class="flex items-center space-x-3">
+                                <div class="relative flex-shrink-0">
+                                    <img src="{{ conversation.profile_img }}" class="w-12 h-12 rounded-full object-cover border border-gray-200">
+                                    {% if conversation.has_unread %}
+                                    <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white bg-red-500"></span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-baseline">
+                                        <h3 class="text-sm font-medium text-gray-900 truncate">{{ conversation.partner.username }}</h3>
+                                        <span class="text-xs text-gray-500">{{ conversation.latest_message.created_at|timesince }}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-500 truncate">
+                                        {% if conversation.latest_message.sender == request.user %}
+                                            <span class="text-gray-400">You:</span>
+                                        {% endif %}
+                                        {{ conversation.latest_message.body }}
+                                    </p>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-10 text-center text-gray-500">
+                            <p>No conversations yet.</p>
+                            <button onclick="document.getElementById('new-message-modal').classList.remove('hidden')" class="mt-4 text-blue-500 hover:underline">Start a new one</button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div class="hidden md:flex w-full md:w-2/3 flex-col bg-gray-50 relative" id="chat-area">
+                <!-- Placeholder when no chat selected -->
+                <div id="no-chat-selected" class="absolute inset-0 flex items-center justify-center text-gray-400">
+                    <div class="text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <p class="text-xl font-medium">Select a conversation to start chatting</p>
+                    </div>
+                </div>
+
+                <!-- Conversation Views -->
+                {% for conversation in conversations %}
+                <div id="user-{{ conversation.partner.username }}" class="conversation-view hidden flex-col h-full absolute inset-0 bg-white z-10">
+                    <!-- Chat Header -->
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white shadow-sm z-20">
+                        <div class="flex items-center space-x-3">
+                            <button class="md:hidden mr-2 text-gray-500" onclick="closeConversation()">
+                                <i class="fa fa-arrow-left"></i>
+                            </button>
+                            <a href="/profile/{{ conversation.partner.username }}" class="flex items-center space-x-3 hover:opacity-80 transition">
+                                <img src="{{ conversation.profile_img }}" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                                <h3 class="font-bold text-gray-800">{{ conversation.partner.username }}</h3>
+                            </a>
+                        </div>
+                        <!-- "Mark as Read" button removed, it's now automatic -->
+                    </div>
+
+                    <!-- Messages -->
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 chat-scroll" id="messages-{{ conversation.partner.username }}">
+                        {% for message in conversation.messages %}
+                        <div class="flex w-full {% if message.sender == request.user %}justify-end{% else %}justify-start{% endif %}">
+                            <div class="max-w-[75%] md:max-w-[60%] relative group">
+                                <div class="{% if message.sender == request.user %}bg-blue-500 text-white rounded-l-2xl rounded-tr-2xl{% else %}bg-white text-gray-800 border border-gray-200 rounded-r-2xl rounded-tl-2xl{% endif %} px-4 py-2 shadow-sm">
+                                    <p class="text-sm leading-relaxed">{{ message.body }}</p>
+                                    {% if message.story %}
+                                        <div class="mt-2 p-2 bg-black/10 rounded text-xs flex items-center space-x-2">
+                                            {% if message.story.image %}
+                                                <img src="{{ message.story.image.url }}" class="w-8 h-8 object-cover rounded">
+                                            {% endif %}
+                                            <span class="italic opacity-80">Replied to story</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <span class="text-[10px] text-gray-400 mt-1 block {% if message.sender == request.user %}text-right mr-1{% else %}ml-1{% endif %}">
+                                    {{ message.created_at|date:"M d, H:i" }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <!-- Typing Indicator (Hidden by default) -->
+                        <div id="typing-{{ conversation.partner.username }}" class="hidden ml-4 mb-4">
+                            <div class="bg-gray-200 text-gray-500 text-xs py-2 px-4 rounded-full inline-block typing-indicator">
+                                {{ conversation.partner.username }} is typing<span>.</span><span>.</span><span>.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="p-4 border-t border-gray-200 bg-white">
+                        <form action="" method="POST" class="flex items-center space-x-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="recipient" value="{{ conversation.partner.username }}">
+                            <input type="text" name="body" placeholder="Type a message..." class="flex-1 bg-gray-100 border-0 rounded-full px-5 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition duration-200" required autocomplete="off">
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center shadow-md transition duration-200 transform hover:scale-105">
+                                <i class="fa fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- New Message Modal -->
+    <div id="new-message-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">New Message</h3>
+                <button onclick="document.getElementById('new-message-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form action="" method="POST" class="p-6">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Recipient Username</label>
+                    <input type="text" name="recipient" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="Search user..." required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Message</label>
+                    <textarea name="body" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 resize-none" placeholder="Write your message here..." required></textarea>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="document.getElementById('new-message-modal').classList.add('hidden')" class="mr-3 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition duration-200">Cancel</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200 transform hover:-translate-y-0.5">
+                        Send Message
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'assets/js/tippy.all.min.js' %}"></script>  
+    <script src="{% static 'assets/js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'assets/js/uikit.js' %}"></script>
+    <script src="{% static 'assets/js/simplebar.js' %}"></script>
+    <script src="{% static 'assets/js/custom.js' %}"></script>
+    <script src="https://unpkg.com/ionicons@5.2.3/dist/ionicons.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const activeUser = urlParams.get('active');
+            if (activeUser) {
+                openConversation('user-' + activeUser);
+            }
+        });
+
+        function openConversation(id) {
+            console.log("Opening conversation: " + id);
+
+            // Hide all conversation views
+            document.querySelectorAll('.conversation-view').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+            });
+
+            // Remove active state from all sidebar items
+            document.querySelectorAll('#conversation-sidebar a').forEach(el => {
+                el.classList.remove('bg-gray-100');
+                el.classList.remove('border-l-4');
+                el.classList.remove('border-blue-500');
+            });
+            
+            // Hide placeholder
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            
+            // Show selected conversation
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('hidden');
+                el.classList.add('flex');
+
+                const username = id.replace('user-', '');
+
+                // Highlight current conversation and mark as read if needed
+                const conversationDiv = document.querySelector(`a[onclick="openConversation('user-${username}')"]`);
+                if (conversationDiv) {
+                    conversationDiv.classList.add('bg-gray-100');
+                    conversationDiv.classList.add('border-l-4');
+                    conversationDiv.classList.add('border-blue-500');
+                    if (conversationDiv.classList.contains('bg-blue-50')) {
+                        markAsRead(username);
+                    }
+                }
+
+                const messagesContainer = document.getElementById('messages-' + username);
+                if (messagesContainer) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+                
+                // On mobile, hide the sidebar
+                if (window.innerWidth < 768) {
+                    document.getElementById('conversation-sidebar').classList.add('hidden');
+                    document.getElementById('chat-area').classList.remove('hidden');
+                    document.getElementById('chat-area').classList.add('flex');
+                }
+            }
+        }
+
+        function closeConversation() {
+            // Only relevant for mobile view
+            document.getElementById('conversation-sidebar').classList.remove('hidden');
+            document.getElementById('chat-area').classList.add('hidden');
+            document.getElementById('chat-area').classList.remove('flex');
+        }
+
+        function markAsRead(username) {
+            fetch(`/mark-conversation-read/${username}/`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Mark as read for " + username + ":", data);
+                    if (data.success) {
+                        // Remove the unread indicator from the sidebar
+                        const conversationDiv = document.querySelector(`a[onclick="openConversation('user-${username}')"]`);
+                        if (conversationDiv) {
+                            conversationDiv.classList.remove('bg-blue-50');
+                            const unreadBadge = conversationDiv.querySelector('.bg-red-500');
+                            if (unreadBadge) unreadBadge.remove();
+                        }
+                    }
+                });
+        }
+
+        // Helper functions to show/hide typing indicator
+        // Call these from your real-time logic (e.g., WebSockets)
+        function showTyping(username) {
+            const el = document.getElementById('typing-' + username);
+            if (el) {
+                el.classList.remove('hidden');
+                const container = document.getElementById('messages-' + username);
+                if(container) container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function hideTyping(username) {
+            const el = document.getElementById('typing-' + username);
+            if (el) {
+                el.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

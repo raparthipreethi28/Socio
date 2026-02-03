@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <!-- Using your existing favicon as a logo example -->
+        <img src="{% static 'images/fav.png' %}" alt="Socio Logo" height="40" style="vertical-align: middle; margin-right: 10px;">
+        {{ site_header|default:_('Django administration') }}
+    </a>
+</h1>
+{% endblock %}
